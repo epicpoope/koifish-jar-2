@@ -44,13 +44,13 @@ ZERO_TRACKER_NO_ODOM,
 //You will input whatever motor names you chose when you configured your robot using the sidebar configurer, they don't have to be "Motor1" and "Motor2".
 
 //Left Motors:
-motor_group(),
+motor_group(left_front, left_middle, left_back),
 
 //Right Motors:
-motor_group(),
+motor_group(right_front, right_middle, right_back),
 
 //Specify the PORT NUMBER of your inertial sensor, in PORT format (i.e. "PORT1", not simply "1"):
-PORT1,
+PORT16,
 
 //Input your wheel diameter. (4" omnis are actually closer to 4.125"):
 3.25,
@@ -58,7 +58,7 @@ PORT1,
 //External ratio, must be in decimal, in the format of input teeth/output teeth.
 //If your motor has an 84-tooth gear and your wheel has a 60-tooth gear, this value will be 1.4.
 //If the motor drives the wheel directly, this value is 1:
-0.6,
+0.75,
 
 //Gyro scale, this is what your gyro reads when you spin the robot 360 degrees.
 //For most cases 360 will do fine here, but this scale factor can be very helpful when precision is necessary.
@@ -119,6 +119,15 @@ void pre_auton() {
   // Initializing Robot Configuration. DO NOT REMOVE!
   vexcodeInit();
   default_constants();
+  // Calibrate inertial sensor similar to koifish.v5python
+  Brain.Screen.clearScreen();
+  Brain.Screen.printAt(5,20, "Calibrating inertial...");
+  inertial_sensor.calibrate();
+  while(inertial_sensor.isCalibrating()){
+    task::sleep(100);
+  }
+  Brain.Screen.clearScreen();
+  Brain.Screen.printAt(5,20, "Ready!");
 
   while(!auto_started){
     Brain.Screen.clearScreen();
@@ -213,6 +222,17 @@ void autonomous(void) {
 
 void usercontrol(void) {
   // User control code here, inside the loop
+  bool is_tank_drive = false;
+  int drive_speed = 100;
+  bool pneumatics_extended = false;
+  bool prev_toggle_combo = false;
+  bool prev_speed_toggle = false;
+  bool prev_pneumatics_press = false;
+
+  auto apply_deadzone = [](int value, int threshold=5){
+    return (abs(value) < threshold) ? 0 : value;
+  };
+
   while (1) {
     // This is the main execution loop for the user control program.
     // Each time through the loop your program should update motor + servo
@@ -223,12 +243,59 @@ void usercontrol(void) {
     // update your motors, etc.
     // ........................................................................
 
-    //Replace this line with chassis.control_tank(); for tank drive 
-    //or chassis.control_holonomic(); for holo drive.
-    chassis.control_arcade();
+    // === Intake Control ===
+    if(Controller1.ButtonR1.pressing()){
+      intake1.spin(fwd, 100, percent);
+      intake2.spin(fwd, 100, percent);
+      intake2.setStopping(coast);
+    } else if(Controller1.ButtonR2.pressing()){
+      intake1.spin(fwd, 100, percent);
+      intake2.stop();
+      intake2.setStopping(hold);
+    } else if(Controller1.ButtonL1.pressing()){
+      intake1.spin(reverse, 100, percent);
+      intake2.spin(reverse, 100, percent);
+      intake2.setStopping(coast);
+    } else {
+      intake1.stop();
+      intake2.stop();
+      intake2.setStopping(coast);
+    }
 
-    wait(20, msec); // Sleep the task for a short amount of time to
-                    // prevent wasted resources.
+    // === Drive Mode Toggle (Y + Right) ===
+    bool toggle_combo = Controller1.ButtonY.pressing() && Controller1.ButtonRight.pressing();
+    if(toggle_combo && !prev_toggle_combo){
+      is_tank_drive = !is_tank_drive;
+      Brain.Screen.clearScreen();
+      Brain.Screen.printAt(5,20, "Drive Mode: %s", is_tank_drive?"Tank":"Arcade");
+    }
+    prev_toggle_combo = toggle_combo;
+
+    // === Speed Toggle (B) ===
+    bool curr_speed_toggle = Controller1.ButtonB.pressing();
+    if(curr_speed_toggle && !prev_speed_toggle){
+      drive_speed = (drive_speed == 100) ? 50 : 100;
+      Brain.Screen.clearScreen();
+      Brain.Screen.printAt(5,20, "Speed: %d%%", drive_speed);
+    }
+    prev_speed_toggle = curr_speed_toggle;
+
+    // === Drive Control using Drive class helpers ===
+    if(is_tank_drive){
+      chassis.control_tank();
+    } else {
+      chassis.control_arcade();
+    }
+
+    // === Pneumatics toggle (L2) ===
+    if(Controller1.ButtonL2.pressing() && !prev_pneumatics_press){
+      solenoid.set(!pneumatics_extended);
+      pneumatics_extended = !pneumatics_extended;
+    }
+    prev_pneumatics_press = Controller1.ButtonL2.pressing();
+
+  wait(20, msec); // Sleep the task for a short amount of time to
+          // prevent wasted resources.
   }
 }
 

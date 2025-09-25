@@ -41,10 +41,54 @@ void odom_constants(){
  */
 
 void drive_test(){
-  chassis.drive_distance(6);
-  chassis.drive_distance(12);
-  chassis.drive_distance(18);
-  chassis.drive_distance(-36);
+  // Koifish autonomous sequence translated from koifish.v5python
+  // intake1_forward_only()
+  intake1_forward_only();
+  // drive_pid(38) -> chassis.drive_distance(38)
+  chassis.drive_distance(38);
+  // wait(1,SECONDS)
+  task::sleep(1000);
+  // intake_stop()
+  intake_stop();
+  // drive_pid(-20)
+  chassis.drive_distance(-20);
+  // turn_pid(90)
+  chassis.turn_to_angle(90);
+  // drive_pid(20)
+  chassis.drive_distance(20);
+  // turn_pid(180)
+  chassis.turn_to_angle(180);
+  // drive_pid(-18)
+  chassis.drive_distance(-18);
+  // intake_forward() for 3 seconds
+  intake_forward();
+  task::sleep(3000);
+  intake_stop();
+}
+
+// Intake helper functions (mirror koifish.v5python behavior)
+void intake_forward(int power=100){
+  intake1.spin(fwd, power, percent);
+  intake2.spin(fwd, power, percent);
+  intake2.setStopping(coast);
+}
+
+void intake1_forward_only(int power=100){
+  intake1.spin(fwd, power, percent);
+  intake2.stop();
+  intake2.setStopping(hold);
+}
+
+void intake_reverse(int power=100){
+  intake1.spin(reverse, power, percent);
+  intake2.spin(reverse, power, percent);
+  intake2.setStopping(coast);
+}
+
+void intake_stop(){
+  intake1.stop();
+  intake2.stop();
+  intake2.setStopping(coast);
 }
 
 /**
