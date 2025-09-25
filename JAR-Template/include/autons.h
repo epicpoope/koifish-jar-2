@@ -20,3 +20,6 @@ void intake_forward(int power=100);
 void intake1_forward_only(int power=100);
 void intake_reverse(int power=100);
 void intake_stop();
+
+// Turn relative to current heading by delta degrees (positive = clockwise/right)
+void turn_by_angle(float delta_deg);

@@ -91,6 +91,16 @@ void intake_stop(){
   intake2.setStopping(coast);
 }
 
+// Turn relative to the current heading
+void turn_by_angle(float delta_deg){
+  float current = chassis.get_absolute_heading();
+  float target = current + delta_deg;
+  // normalize to [0,360)
+  while(target < 0) target += 360;
+  while(target >= 360) target -= 360;
+  chassis.turn_to_angle(target);
+}
+
 /**
  * The expected behavior is to return to the start angle, after making a complete turn.
  */
